@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",                          // Modern JS features
+    "module": "commonjs",                        // Works with Node.js require
+    "lib": ["ES2020"],                           // Modern library support
+    "outDir": "./dist",                          // Compiled JS goes here
+    "rootDir": "./src",                          // Your TS source files
+
+    // Interop
+    "esModuleInterop": true,                     // Fixes default import issues
+    "allowSyntheticDefaultImports": true,        // Allows default-style imports
+    "moduleResolution": "node",
+
+    // Strictness
+    "strict": true,                              // Enable full strict mode
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+
+    // Extras
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "removeComments": true,
+
+    // Optional relaxations (can tighten later if needed)
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "strictFunctionTypes": false,
+    "noImplicitReturns": false,
+    "noFallthroughCasesInSwitch": true,
+
+    // Path alias
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
