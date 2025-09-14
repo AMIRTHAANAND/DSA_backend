@@ -56,7 +56,7 @@ src/
 =======
 # DSA Learning Platform - Backend API
 
-A comprehensive backend API for the DSA (Data Structures and Algorithms) Learning Platform built with TypeScript, Node.js, Express.js, and MongoDB.
+A comprehensive backend API for the DSA (Data Structures and Algorithms) Learning Platform built with TypeScript, Node.js, Express.js, and MySQL with Prisma ORM.
 
 ## 🚀 Features
 
@@ -74,16 +74,16 @@ A comprehensive backend API for the DSA (Data Structures and Algorithms) Learnin
 - **Runtime**: Node.js
 - **Framework**: Express.js
 - **Language**: TypeScript
-- **Database**: MongoDB with Mongoose ODM
+- **Database**: MySQL with Prisma ORM
 - **Authentication**: JWT (JSON Web Tokens)
 - **Validation**: Express-validator
 - **Security**: Helmet, CORS, bcryptjs
-- **Development**: Nodemon, ts-node
+- **Development**: Nodemon, ts-node, Prisma Studio
 
 ## 📋 Prerequisites
 
 - Node.js (v16 or higher)
-- MongoDB (v4.4 or higher)
+- MySQL (v8.0 or higher)
 - npm or yarn
 
 ## 🚀 Installation
@@ -159,13 +159,15 @@ After seeding, you can use these accounts:
    ```env
    PORT=5000
    NODE_ENV=development
-   MONGODB_URI=mongodb://localhost:27017/dsa_learning_platform
+   DATABASE_URL="mysql://username:password@localhost:3306/dsa_learning_platform"
    JWT_SECRET=your-super-secret-jwt-key-here
    JWT_EXPIRES_IN=7d
    ```
 
-4. **Start MongoDB**
-   Make sure MongoDB is running on your system or use MongoDB Atlas.
+4. **Setup Database**
+   - Install MySQL and create a database named `dsa_learning_platform`
+   - Run `npx prisma generate` to generate Prisma client
+   - Run `npx prisma db push` to create tables
 
 5. **Run the application**
    ```bash
