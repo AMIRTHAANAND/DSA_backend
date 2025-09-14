@@ -1,73 +1,9 @@
-<<<<<<< HEAD
-import express from 'express';
-import { body } from 'express-validator';
-import {
-  register,
-  login,
-  getProfile,
-  updateProfile,
-  changePassword,
-} from '../controllers/authController';
-import { authenticate } from '../middleware/auth';
-
-const router = express.Router();
-
-// Validation rules
-const registerValidation = [
-  body('username')
-    .isLength({ min: 3, max: 30 })
-    .withMessage('Username must be between 3 and 30 characters')
-    .matches(/^[a-zA-Z0-9_]+$/)
-    .withMessage('Username can only contain letters, numbers, and underscores'),
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Please provide a valid email'),
-  body('password')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters long'),
-  body('firstName')
-    .isLength({ min: 1, max: 50 })
-    .withMessage('First name is required and cannot exceed 50 characters'),
-  body('lastName')
-    .isLength({ min: 1, max: 50 })
-    .withMessage('Last name is required and cannot exceed 50 characters'),
-];
-
-const loginValidation = [
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Please provide a valid email'),
-  body('password')
-    .notEmpty()
-    .withMessage('Password is required'),
-];
-
-const changePasswordValidation = [
-  body('currentPassword')
-    .notEmpty()
-    .withMessage('Current password is required'),
-  body('newPassword')
-    .isLength({ min: 6 })
-    .withMessage('New password must be at least 6 characters long'),
-];
-
-// Routes
-router.post('/register', registerValidation, register);
-router.post('/login', loginValidation, login);
-router.get('/profile', authenticate, getProfile);
-router.put('/profile', authenticate, updateProfile);
-router.put('/change-password', authenticate, changePasswordValidation, changePassword);
-
-export default router;
-=======
-import express, { Router } from "express";
+﻿import express, { Router } from "express";
 import jwt from "jsonwebtoken";
 import { body, validationResult } from "express-validator";
-import User from "../models/User";
+import prisma from "../config/database";
 import { protect } from "../middleware/auth";
-import { sendLoginEmail } from "../services/emailService"; // 👈 import email service
+import { sendLoginEmail } from "../services/emailService"; // ðŸ‘ˆ import email service
 import { sendAdminNotification } from "../services/emailService"; // new
 
 const router = Router();
@@ -106,8 +42,13 @@ router.post(
 
       const { username, email, password, firstName, lastName, role } = req.body;
 
-      const existingUser = await User.findOne({
-        $or: [{ email }, { username }],
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: email },
+            { username: username }
+          ]
+        }
       });
 
       if (existingUser) {
@@ -120,7 +61,7 @@ router.post(
         });
       }
 
-      const user = await User.create({
+      const user = await prisma.user.create({
         username,
         email,
         password,
@@ -131,7 +72,7 @@ router.post(
 
       const token = generateToken(user._id.toString());
 
-      // 👇 Send Welcome Email
+      // ðŸ‘‡ Send Welcome Email
       await sendLoginEmail(user.email);
 
       res.status(201).json({
@@ -175,7 +116,19 @@ router.post(
 
       const { email, password } = req.body;
 
-      const user = await User.findOne({ email }).select("+password");
+      const user = await prisma.user.findUnique({ 
+        where: { email },
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          password: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          isActive: true
+        }
+      });
       if (!user) return res.status(401).json({ success: false, error: "Invalid credentials" });
 
       if (!user.isActive)
@@ -189,7 +142,7 @@ router.post(
 
       const token = generateToken(user._id.toString());
 
-      // 👇 Send Login Notification Email
+      // ðŸ‘‡ Send Login Notification Email
       await sendLoginEmail(user.email);
 
       res.json({
@@ -215,4 +168,3 @@ router.post(
 );
 
 export default router;
->>>>>>> 6a237b314cc6801134bc078ae9128882a249b6b6

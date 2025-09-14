@@ -1,15 +1,15 @@
-<<<<<<< HEAD
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { validationResult } from 'express-validator';
 import prisma from '../config/database';
+import { sendLoginEmail, sendAdminNotification, sendApprovalEmail, sendRejectionEmail } from '../services/emailService';
 
 // Generate JWT token for admin
 const generateAdminToken = (adminId: string): string => {
   return jwt.sign({ adminId, type: 'admin' }, process.env.JWT_SECRET!, {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  });
+  } as jwt.SignOptions);
 };
 
 // Register admin (requires approval)
@@ -61,6 +61,15 @@ export const registerAdmin = async (req: Request, res: Response): Promise<void> 
         createdAt: true,
       }
     });
+
+    // 🔔 Send notification to super admin
+    try {
+      await sendAdminNotification(admin);
+      console.log('✅ Admin notification email sent to super admin');
+    } catch (emailError) {
+      console.error('❌ Failed to send admin notification email:', emailError);
+      // Don't fail the registration if email fails
+    }
 
     res.status(201).json({
       success: true,
@@ -125,6 +134,15 @@ export const loginAdmin = async (req: Request, res: Response): Promise<void> => 
 
     // Generate token
     const token = generateAdminToken(admin.id);
+
+    // 🔔 Send login notification email
+    try {
+      await sendLoginEmail(admin.email);
+      console.log('✅ Login notification email sent to admin');
+    } catch (emailError) {
+      console.error('❌ Failed to send login notification email:', emailError);
+      // Don't fail the login if email fails
+    }
 
     // Return admin data without password
     const { password: _, ...adminWithoutPassword } = admin;
@@ -212,6 +230,15 @@ export const approveAdmin = async (req: Request, res: Response): Promise<void> =
       }
     });
 
+    // 🔔 Send approval email to admin
+    try {
+      await sendApprovalEmail(admin.email, admin.name);
+      console.log('✅ Approval email sent to admin');
+    } catch (emailError) {
+      console.error('❌ Failed to send approval email:', emailError);
+      // Don't fail the approval if email fails
+    }
+
     res.json({
       success: true,
       message: 'Admin approved successfully',
@@ -243,6 +270,15 @@ export const rejectAdmin = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
+    // 🔔 Send rejection email to admin before deletion
+    try {
+      await sendRejectionEmail(admin.email, admin.name);
+      console.log('✅ Rejection email sent to admin');
+    } catch (emailError) {
+      console.error('❌ Failed to send rejection email:', emailError);
+      // Continue with deletion even if email fails
+    }
+
     await prisma.admin.delete({
       where: { id: adminId }
     });
@@ -259,94 +295,3 @@ export const rejectAdmin = async (req: Request, res: Response): Promise<void> =>
     });
   }
 };
-=======
-import asyncHandler from "express-async-handler";
-import jwt from "jsonwebtoken";
-import Admin from "../models/Admin";
-import { sendLoginEmail, sendAdminNotification } from "../utils/emailService";  // ✅ updated import
-
-// ✅ Generate JWT Token
-const generateToken = (id: string) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || "secret", {
-    expiresIn: "30d",
-  });
-};
-
-// ✅ Register Admin
-export const registerAdmin = asyncHandler(async (req, res) => {
-  const { name, email, password } = req.body;
-
-  const adminExists = await Admin.findOne({ email });
-  if (adminExists) {
-    res.status(400);
-    throw new Error("Admin already exists");
-  }
-
-  const admin = await Admin.create({
-    name,
-    email,
-    password,
-    role: "admin",
-    isApproved: false,
-  });
-
-  if (admin) {
-    // 🔔 Notify Super Admin
-    await sendAdminNotification(admin);
-
-    res.status(201).json({
-      _id: admin._id,
-      name: admin.name,
-      email: admin.email,
-      role: admin.role,
-      isApproved: admin.isApproved,
-    });
-  } else {
-    res.status(400);
-    throw new Error("Invalid admin data");
-  }
-});
-
-// ✅ Approve Admin (only Super Admin can do this)
-export const approveAdmin = asyncHandler(async (req, res) => {
-  const admin = await Admin.findById(req.params.adminId);
-
-  if (!admin) {
-    res.status(404);
-    throw new Error("Admin not found");
-  }
-
-  admin.isApproved = true;
-  await admin.save();
-
-  res.json({ message: "Admin approved successfully" });
-});
-
-// ✅ Login Admin
-export const loginAdmin = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
-
-  const admin = await Admin.findOne({ email });
-
-  if (admin && (await admin.matchPassword(password))) {
-    if (!admin.isApproved) {
-      res.status(401);
-      throw new Error("Admin not approved by Super Admin");
-    }
-
-    // 🔔 Send login email
-    await sendLoginEmail(admin.email);
-
-    res.json({
-      _id: admin._id,
-      name: admin.name,
-      email: admin.email,
-      role: admin.role,
-      token: generateToken(admin._id.toString()),
-    });
-  } else {
-    res.status(401);
-    throw new Error("Invalid email or password");
-  }
-});
->>>>>>> 6a237b314cc6801134bc078ae9128882a249b6b6

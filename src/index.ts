@@ -4,11 +4,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-<<<<<<< HEAD
 import { connectDB, disconnectDB } from './config/database';
-=======
-import { connectDB } from './config/database';
->>>>>>> 6a237b314cc6801134bc078ae9128882a249b6b6
 import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
 
@@ -62,13 +58,8 @@ app.use('/api/admin', adminRoutes);              // Admin dashboard, analytics, 
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-<<<<<<< HEAD
-  res.status(200).json({
-    status: 'OK',
-=======
   res.status(200).json({ 
     status: 'OK', 
->>>>>>> 6a237b314cc6801134bc078ae9128882a249b6b6
     message: 'DSA Learning Platform API is running',
     timestamp: new Date().toISOString()
   });
@@ -79,17 +70,12 @@ app.use(notFound);
 app.use(errorHandler);
 
 // Start server
-<<<<<<< HEAD
 const server = app.listen(PORT, () => {
-=======
-app.listen(PORT, () => {
->>>>>>> 6a237b314cc6801134bc078ae9128882a249b6b6
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📚 DSA Learning Platform API`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
-<<<<<<< HEAD
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully');
@@ -108,6 +94,3 @@ process.on('SIGINT', async () => {
 });
 
 export default app;
-=======
-export default app;
->>>>>>> 6a237b314cc6801134bc078ae9128882a249b6b6

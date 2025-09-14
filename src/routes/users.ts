@@ -1,44 +1,6 @@
-import express from 'express';
-<<<<<<< HEAD
-import { body } from 'express-validator';
-import {
-  getUsers,
-  getUser,
-  updateUser,
-  deleteUser,
-  getUserStats,
-} from '../controllers/usersController';
-import { authenticate, requireAdmin } from '../middleware/auth';
-
-const router = express.Router();
-
-// Validation rules
-const updateUserValidation = [
-  body('role')
-    .optional()
-    .isIn(['STUDENT', 'INSTRUCTOR', 'ADMIN'])
-    .withMessage('Invalid role'),
-  body('isActive')
-    .optional()
-    .isBoolean()
-    .withMessage('isActive must be a boolean'),
-];
-
-// All routes require admin authentication
-router.use(authenticate);
-router.use(requireAdmin);
-
-// Routes
-router.get('/', getUsers);
-router.get('/stats', getUserStats);
-router.get('/:id', getUser);
-router.put('/:id', updateUserValidation, updateUser);
-router.delete('/:id', deleteUser);
-
-export default router;
-=======
-import { body, query, param, validationResult } from 'express-validator'; // <- named imports
-import User from '../models/User';
+﻿import express from 'express';
+import { body, query, param, validationResult } from 'express-validator';
+import prisma from '../config/database';
 import { protect, authorize, AuthRequest } from '../middleware/auth';
 
 const router = express.Router();
@@ -48,9 +10,19 @@ const router = express.Router();
 // @access  Private
 router.get('/', [protect, authorize('admin')], async (req: express.Request, res: express.Response) => {
   try {
-    const users = await User.find()
-      .select('-password') // exclude password
-      .sort({ lastLogin: -1 }); // recent logins first
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isActive: true,
+        lastLogin: true
+      },
+      orderBy: { lastLogin: 'desc' }
+    });
 
     res.json({ success: true, data: users });
   } catch (error) {
@@ -80,9 +52,19 @@ router.put(
       if (lastName) updateData.lastName = lastName;
       if (bio !== undefined) updateData.bio = bio;
 
-      const user = await User.findByIdAndUpdate(req.user!.id, updateData, {
-        new: true,
-        runValidators: true
+      const user = await prisma.user.update({
+        where: { id: req.user!.id },
+        data: updateData,
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          bio: true,
+          role: true,
+          isActive: true
+        }
       });
 
       res.json({ success: true, message: 'Profile updated successfully', data: user });
@@ -109,7 +91,19 @@ router.put(
 
     try {
       const { currentPassword, newPassword } = req.body;
-      const user = await User.findById(req.user!.id).select('+password');
+      const user = await prisma.user.findUnique({
+        where: { id: req.user!.id },
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          password: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          isActive: true
+        }
+      });
       if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
       const isMatch = await user.comparePassword(currentPassword);
@@ -131,7 +125,19 @@ router.put(
 // @access  Private (Admin only)
 router.get('/', [protect, authorize('admin')], async (req: express.Request, res: express.Response) => {
   try {
-    const users = await User.find().select('-password').sort({ createdAt: -1 });
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isActive: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
     res.json({ success: true, data: users });
   } catch (error) {
     console.error('Get users error:', error);
@@ -144,7 +150,18 @@ router.get('/', [protect, authorize('admin')], async (req: express.Request, res:
 // @access  Private (Admin only)
 router.get('/:id', [protect, authorize('admin')], async (req: express.Request, res: express.Response) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
+    const user = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isActive: true
+      }
+    });
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
     res.json({ success: true, data: user });
@@ -172,13 +189,24 @@ router.put(
     if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
 
     try {
-      const user = await User.findById(req.params.id);
+      const user = await prisma.user.findUnique({
+        where: { id: req.params.id }
+      });
       if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
-      const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, {
-        new: true,
-        runValidators: true
-      }).select('-password');
+      const updatedUser = await prisma.user.update({
+        where: { id: req.params.id },
+        data: req.body,
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          isActive: true
+        }
+      });
 
       res.json({ success: true, message: 'User updated successfully', data: updatedUser });
     } catch (error) {
@@ -193,15 +221,15 @@ router.put(
 // @access  Private (Admin only)
 router.delete('/:id', [protect, authorize('admin')], async (req: AuthRequest, res: express.Response) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await prisma.user.findById(req.params.id);
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
     if (user._id.toString() === req.user!.id) {
       return res.status(400).json({ success: false, error: 'Cannot delete your own account' });
     }
 
-    await User.findByIdAndDelete(req.params.id);
-    res.json({ success: true, message: 'User deleted successfully' });
+    await prisma.user.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'prisma.user deleted successfully' });
   } catch (error) {
     console.error('Delete user error:', error);
     res.status(500).json({ success: false, error: 'Server error while deleting user' });
@@ -213,7 +241,7 @@ router.delete('/:id', [protect, authorize('admin')], async (req: AuthRequest, re
 // @access  Private (Admin only)
 router.patch('/:id/status', [protect, authorize('admin')], async (req: AuthRequest, res: express.Response) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await prisma.user.findById(req.params.id);
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
     if (user._id.toString() === req.user!.id) {
@@ -225,7 +253,7 @@ router.patch('/:id/status', [protect, authorize('admin')], async (req: AuthReque
 
     res.json({
       success: true,
-      message: `User ${user.isActive ? 'activated' : 'deactivated'} successfully`,
+      message: `prisma.user ${user.isActive ? 'activated' : 'deactivated'} successfully`,
       data: { isActive: user.isActive }
     });
   } catch (error) {
@@ -235,4 +263,3 @@ router.patch('/:id/status', [protect, authorize('admin')], async (req: AuthReque
 });
 
 export default router;
->>>>>>> 6a237b314cc6801134bc078ae9128882a249b6b6

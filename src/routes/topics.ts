@@ -1,62 +1,6 @@
-import express from 'express';
-<<<<<<< HEAD
-import { body } from 'express-validator';
-import {
-  getTopics,
-  getTopicBySlug,
-  createTopic,
-  updateTopic,
-  deleteTopic,
-} from '../controllers/topicsController';
-import { authenticate, requireAdmin, optionalAuth } from '../middleware/auth';
-
-const router = express.Router();
-
-// Validation rules
-const topicValidation = [
-  body('title')
-    .isLength({ min: 1, max: 100 })
-    .withMessage('Title is required and cannot exceed 100 characters'),
-  body('slug')
-    .matches(/^[a-z0-9-]+$/)
-    .withMessage('Slug must contain only lowercase letters, numbers, and hyphens'),
-  body('description')
-    .isLength({ min: 1, max: 500 })
-    .withMessage('Description is required and cannot exceed 500 characters'),
-  body('category')
-    .isIn(['DATA_STRUCTURES', 'ALGORITHMS', 'CONCEPTS'])
-    .withMessage('Invalid category'),
-  body('difficulty')
-    .isIn(['BEGINNER', 'INTERMEDIATE', 'ADVANCED'])
-    .withMessage('Invalid difficulty'),
-  body('overview')
-    .notEmpty()
-    .withMessage('Overview is required'),
-  body('explanation')
-    .notEmpty()
-    .withMessage('Explanation is required'),
-  body('pseudocode')
-    .notEmpty()
-    .withMessage('Pseudocode is required'),
-  body('whyItMatters')
-    .notEmpty()
-    .withMessage('Why it matters section is required'),
-  body('estimatedTime')
-    .isInt({ min: 1 })
-    .withMessage('Estimated time must be at least 1 minute'),
-];
-
-// Routes
-router.get('/', optionalAuth, getTopics);
-router.get('/:slug', optionalAuth, getTopicBySlug);
-router.post('/', authenticate, requireAdmin, topicValidation, createTopic);
-router.put('/:id', authenticate, requireAdmin, topicValidation, updateTopic);
-router.delete('/:id', authenticate, requireAdmin, deleteTopic);
-
-export default router;
-=======
-import { body, query, param, validationResult } from 'express-validator'; // <- named imports
-import Topic from '../models/Topic';
+﻿import express from 'express';
+import { body, query, param, validationResult } from 'express-validator';
+import prisma from '../config/database';
 import { protect, authorize, AuthRequest } from '../middleware/auth';
 
 const router = express.Router();
@@ -97,7 +41,7 @@ router.get(
       }
 
       const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
-      const topics = await Topic.find(filter)
+      const topics = await prisma.topic.find(filter)
         .populate('createdBy', 'username firstName lastName')
         .sort({ order: 1, createdAt: -1 })
         .skip(skip)
@@ -105,7 +49,7 @@ router.get(
         .select('-content.explanation -content.pseudocode -content.codeSnippets')
         .lean();
 
-      const total = await Topic.countDocuments(filter);
+      const total = await prisma.topic.countDocuments(filter);
 
       res.json({
         success: true,
@@ -129,10 +73,10 @@ router.get(
 // @access  Public
 router.get('/:slug', async (req: express.Request, res: express.Response) => {
   try {
-    const topic = await Topic.findOne({ slug: req.params.slug, isPublished: true })
+    const topic = await prisma.topic.findOne({ slug: req.params.slug, isPublished: true })
       .populate('createdBy', 'username firstName lastName');
 
-    if (!topic) return res.status(404).json({ success: false, error: 'Topic not found' });
+    if (!topic) return res.status(404).json({ success: false, error: 'prisma.topic not found' });
 
     res.json({ success: true, data: topic });
   } catch (error) {
@@ -166,16 +110,16 @@ router.post(
     if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
 
     try {
-      const existingTopic = await Topic.findOne({ slug: req.body.slug });
+      const existingTopic = await prisma.topic.findFirst({ where: { slug: req.body.slug } });
       if (existingTopic) return res.status(400).json({ success: false, error: 'Topic with this slug already exists' });
 
-      const topic = await Topic.create({
+      const topic = await prisma.topic.create({
         ...req.body,
         createdBy: req.user!.id,
         updatedBy: req.user!.id
       });
 
-      res.status(201).json({ success: true, message: 'Topic created successfully', data: topic });
+      res.status(201).json({ success: true, message: 'prisma.topic created successfully', data: topic });
     } catch (error) {
       console.error('Create topic error:', error);
       res.status(500).json({ success: false, error: 'Server error while creating topic' });
@@ -201,19 +145,18 @@ router.put(
     if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
 
     try {
-      const topic = await Topic.findById(req.params.id);
-      if (!topic) return res.status(404).json({ success: false, error: 'Topic not found' });
+      const topic = await prisma.topic.findById(req.params.id);
+      if (!topic) return res.status(404).json({ success: false, error: 'prisma.topic not found' });
 
       if (req.body.slug && req.body.slug !== topic.slug) {
-        const existingTopic = await Topic.findOne({ slug: req.body.slug });
+        const existingTopic = await prisma.topic.findFirst({ where: { slug: req.body.slug } });
         if (existingTopic) return res.status(400).json({ success: false, error: 'Topic with this slug already exists' });
       }
 
-      const updatedTopic = await Topic.findByIdAndUpdate(
-        req.params.id,
-        { ...req.body, updatedBy: req.user!.id },
-        { new: true, runValidators: true }
-      );
+      const updatedTopic = await prisma.topic.update({
+        where: { id: req.params.id },
+        data: { ...req.body, updatedBy: req.user!.id }
+      });
 
       res.json({ success: true, message: 'Topic updated successfully', data: updatedTopic });
     } catch (error) {
@@ -228,11 +171,11 @@ router.put(
 // @access  Private (Admin only)
 router.delete('/:id', [protect, authorize('admin')], async (req: AuthRequest, res: express.Response) => {
   try {
-    const topic = await Topic.findById(req.params.id);
-    if (!topic) return res.status(404).json({ success: false, error: 'Topic not found' });
+    const topic = await prisma.topic.findById(req.params.id);
+    if (!topic) return res.status(404).json({ success: false, error: 'prisma.topic not found' });
 
-    await Topic.findByIdAndDelete(req.params.id);
-    res.json({ success: true, message: 'Topic deleted successfully' });
+    await prisma.topic.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'prisma.topic deleted successfully' });
   } catch (error) {
     console.error('Delete topic error:', error);
     res.status(500).json({ success: false, error: 'Server error while deleting topic' });
@@ -244,8 +187,8 @@ router.delete('/:id', [protect, authorize('admin')], async (req: AuthRequest, re
 // @access  Private (Admin/Instructor only)
 router.patch('/:id/publish', [protect, authorize('admin', 'instructor')], async (req: AuthRequest, res: express.Response) => {
   try {
-    const topic = await Topic.findById(req.params.id);
-    if (!topic) return res.status(404).json({ success: false, error: 'Topic not found' });
+    const topic = await prisma.topic.findById(req.params.id);
+    if (!topic) return res.status(404).json({ success: false, error: 'prisma.topic not found' });
 
     topic.isPublished = !topic.isPublished;
     topic.updatedBy = req.user!.id;
@@ -253,7 +196,7 @@ router.patch('/:id/publish', [protect, authorize('admin', 'instructor')], async 
 
     res.json({
       success: true,
-      message: `Topic ${topic.isPublished ? 'published' : 'unpublished'} successfully`,
+      message: `prisma.topic ${topic.isPublished ? 'published' : 'unpublished'} successfully`,
       data: { isPublished: topic.isPublished }
     });
   } catch (error) {
@@ -263,4 +206,3 @@ router.patch('/:id/publish', [protect, authorize('admin', 'instructor')], async 
 });
 
 export default router;
->>>>>>> 6a237b314cc6801134bc078ae9128882a249b6b6

@@ -1,10 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-<<<<<<< HEAD
 import prisma from '../config/database';
 
 interface JwtPayload {
   userId: string;
+}
+
+export interface AuthRequest extends Request {
+  user?: any;
 }
 
 declare global {
@@ -88,6 +91,9 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
+// Alias for compatibility
+export const protect = authenticate;
+
 // Middleware to check if user is admin or instructor
 export const requireAdmin = (req: Request, res: Response, next: NextFunction): void => {
   if (!req.user) {
@@ -128,6 +134,29 @@ export const requireInstructor = (req: Request, res: Response, next: NextFunctio
   }
 
   next();
+};
+
+// Role-based authorization middleware
+export const authorize = (...roles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required.',
+      });
+      return;
+    }
+
+    if (!roles.includes(req.user.role)) {
+      res.status(403).json({
+        success: false,
+        message: `Access denied. Required roles: ${roles.join(', ')}`,
+      });
+      return;
+    }
+
+    next();
+  };
 };
 
 // Optional authentication - doesn't fail if no token
@@ -176,51 +205,3 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
     next();
   }
 };
-=======
-import User from '../models/User';
-
-export interface AuthRequest extends Request {
-  user?: any;
-}
-
-export const protect = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
-  let token: string | undefined;
-
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    token = req.headers.authorization.split(' ')[1];
-  }
-
-  if (!token) {
-    res.status(401).json({ success: false, error: 'Not authorized to access this route' });
-    return;
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
-    req.user = await User.findById(decoded.id).select('-password');
-    next();
-  } catch (error) {
-    res.status(401).json({ success: false, error: 'Not authorized to access this route' });
-  }
-};
-
-export const authorize = (...roles: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction): void => {
-    if (!req.user) {
-      res.status(401).json({ success: false, error: 'Not authorized to access this route' });
-      return;
-    }
-
-    if (!roles.includes(req.user.role)) {
-      res.status(403).json({ 
-        success: false, 
-        error: `User role ${req.user.role} is not authorized to access this route` 
-      });
-      return;
-    }
-
-    next();
-  };
-};
-
->>>>>>> 6a237b314cc6801134bc078ae9128882a249b6b6

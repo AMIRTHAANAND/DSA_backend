@@ -1,39 +1,6 @@
-<<<<<<< HEAD
-import express from 'express';
-import { body } from 'express-validator';
-import {
-  getUserProgress,
-  updateTopicProgress,
-  getProgressStats,
-  getLeaderboard,
-} from '../controllers/progressController';
-import { authenticate, optionalAuth } from '../middleware/auth';
-
-const router = express.Router();
-
-// Validation rules
-const topicProgressValidation = [
-  body('status')
-    .isIn(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'])
-    .withMessage('Invalid status'),
-  body('timeSpent')
-    .optional()
-    .isInt({ min: 0 })
-    .withMessage('Time spent must be a positive number'),
-];
-
-// Routes
-router.get('/', authenticate, getUserProgress);
-router.get('/stats', authenticate, getProgressStats);
-router.get('/leaderboard', optionalAuth, getLeaderboard);
-router.put('/topics/:topicId', authenticate, topicProgressValidation, updateTopicProgress);
-
-export default router;
-=======
-import express, { Response } from 'express';
+﻿import express, { Response } from 'express';
 import { body, validationResult } from 'express-validator';
-
-import Progress from '../models/Progress';
+import prisma from '../config/database';
 import { protect, AuthRequest } from '../middleware/auth';
 
 const router = express.Router();
@@ -47,10 +14,10 @@ router.get('/', protect, async (req: AuthRequest, res: Response) => {
   if (!req.user) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
   try {
-    let progress = await Progress.findOne({ userId: req.user.id });
+    let progress = await prisma.progress.findOne({ userId: req.user.id });
 
     if (!progress) {
-      progress = await Progress.create({ userId: req.user.id });
+      progress = await prisma.progress.create({ userId: req.user.id });
     }
 
     res.json({ success: true, data: progress });
@@ -80,19 +47,19 @@ router.post(
     const { topicId, status, timeSpent = 0 } = req.body;
 
     try {
-      let progress = await Progress.findOne({ userId: req.user.id });
-      if (!progress) progress = await Progress.create({ userId: req.user.id });
+      let progress = await prisma.progress.findOne({ userId: req.user.id });
+      if (!progress) progress = await prisma.progress.create({ userId: req.user.id });
 
-      const topicIndex = progress.topicProgress.findIndex(tp => tp.topicId.toString() === topicId);
+      const topicIndex = progress.topicprisma.progress.findIndex(tp => tp.topicId.toString() === topicId);
 
       if (topicIndex >= 0) {
-        const tp = progress.topicProgress[topicIndex];
+        const tp = progress.topicprisma.progress[topicIndex];
         tp.status = status;
         tp.timeSpent += timeSpent;
         tp.lastAccessed = new Date();
         if (status === 'completed' && !tp.completedAt) tp.completedAt = new Date();
       } else {
-        progress.topicProgress.push({
+        progress.topicprisma.progress.push({
           topicId,
           status,
           timeSpent,
@@ -103,8 +70,8 @@ router.post(
         });
       }
 
-      progress.completedTopics = progress.topicProgress.filter(tp => tp.status === 'completed').length;
-      progress.totalTopics = progress.topicProgress.length;
+      progress.completedTopics = progress.topicprisma.progress.filter(tp => tp.status === 'completed').length;
+      progress.totalTopics = progress.topicprisma.progress.length;
       progress.lastActivityDate = new Date();
 
       await progress.save();
@@ -118,4 +85,3 @@ router.post(
 );
 
 export default router;
->>>>>>> 6a237b314cc6801134bc078ae9128882a249b6b6
