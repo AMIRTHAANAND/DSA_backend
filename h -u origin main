@@ -1,0 +1,5 @@
+[33m0d3c13e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Add email functionality and complete backend features - Email service with nodemailer integration - User and admin authentication with email notifications - Complete API endpoints for DSA learning platform - Database models and controllers - Security middleware and validation
+[33mfff421b[m[33m ([m[1;31morigin/main[m[33m)[m Update README: Reflect MySQL and Prisma implementation
+[33mcf7e07d[m Merge: Updated DSA Backend with MySQL and Prisma implementation
+[33m1915c3d[m Initial commit: DSA Learning Platform Backend with MySQL and Prisma
+[33m6a237b3[m Initial commit
