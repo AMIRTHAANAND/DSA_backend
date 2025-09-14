@@ -4,8 +4,28 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+<<<<<<< HEAD
 # Runtime data
 pids
+=======
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build output
+dist/
+build/
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids/
+>>>>>>> 6a237b314cc6801134bc078ae9128882a249b6b6
 *.pid
 *.seed
 *.pid.lock
@@ -17,6 +37,7 @@ coverage/
 # nyc test coverage
 .nyc_output
 
+<<<<<<< HEAD
 # Grunt intermediate storage
 .grunt
 
@@ -35,6 +56,11 @@ jspm_packages/
 # TypeScript cache
 *.tsbuildinfo
 
+=======
+# Dependency directories
+jspm_packages/
+
+>>>>>>> 6a237b314cc6801134bc078ae9128882a249b6b6
 # Optional npm cache directory
 .npm
 
@@ -57,6 +83,7 @@ jspm_packages/
 .yarn-integrity
 
 # dotenv environment variables file
+<<<<<<< HEAD
 .env
 .env.test
 .env.local
@@ -153,6 +180,9 @@ typings/
 .env.test
 .env.local
 .env.production
+=======
+.env.test
+>>>>>>> 6a237b314cc6801134bc078ae9128882a249b6b6
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -163,6 +193,7 @@ typings/
 
 # Nuxt.js build / generate output
 .nuxt
+<<<<<<< HEAD
 dist
 
 # Gatsby files
@@ -200,12 +231,30 @@ dist
 prisma/migrations/
 
 # IDE
+=======
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Editor directories and files
+>>>>>>> 6a237b314cc6801134bc078ae9128882a249b6b6
 .vscode/
 .idea/
 *.swp
 *.swo
+<<<<<<< HEAD
 
 # OS
+=======
+*~
+
+# OS generated files
+>>>>>>> 6a237b314cc6801134bc078ae9128882a249b6b6
 .DS_Store
 .DS_Store?
 ._*
@@ -214,6 +263,18 @@ prisma/migrations/
 ehthumbs.db
 Thumbs.db
 
+<<<<<<< HEAD
 # Build outputs
 dist/
 build/
+=======
+# Uploads
+uploads/
+public/uploads/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+>>>>>>> 6a237b314cc6801134bc078ae9128882a249b6b6

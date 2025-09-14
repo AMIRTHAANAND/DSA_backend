@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -330,3 +331,32 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
     });
   }
 };
+=======
+import { Request, Response } from "express";
+import User from "../models/User"; // adjust path if different
+import { sendLoginEmail } from "../services/emailService";
+
+export const loginUser = async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // TODO: Add password validation (e.g. bcrypt.compare)
+    if (user.password !== password) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    // Send login email
+    await sendLoginEmail(user.email);
+
+    res.json({ message: "Login successful", user });
+  } catch (error) {
+    console.error("❌ Error in loginUser:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+>>>>>>> 6a237b314cc6801134bc078ae9128882a249b6b6
