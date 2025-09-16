@@ -173,3 +173,41 @@ export const sendUserApprovalEmail = async (to: string, name: string) => {
     console.error("❌ Error sending user approval email:", error);
   }
 };
+
+export const sendWelcomeEmail = async (to: string, name: string) => {
+  try {
+    const mailOptions = {
+      from: `"DSA Learning Platform" <${process.env.EMAIL_USER}>`,
+      to,
+      subject: "🎉 Welcome to DSA Learning Platform!",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2563eb;">🎉 Welcome to DSA Learning Platform!</h2>
+          <p>Hello ${name},</p>
+          <p>Thank you for registering with the DSA Learning Platform! We're excited to have you join our community.</p>
+          
+          <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #2563eb; margin-top: 0;">🚀 Get Started!</h3>
+            <p>Here's what you can do now:</p>
+            <ul>
+              <li>Explore our comprehensive DSA curriculum</li>
+              <li>Practice with interactive coding exercises</li>
+              <li>Take quizzes to test your knowledge</li>
+              <li>Track your learning progress</li>
+              <li>Connect with other learners</li>
+            </ul>
+          </div>
+          
+          <p>We're committed to helping you master Data Structures and Algorithms. If you have any questions, feel free to reach out to our support team.</p>
+          <p>Happy learning!</p>
+          <p>Best regards,<br>DSA Learning Platform Team</p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log("✅ Welcome email sent to:", to);
+  } catch (error) {
+    console.error("❌ Error sending welcome email:", error);
+  }
+};

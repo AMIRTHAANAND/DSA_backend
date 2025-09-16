@@ -1,9 +1,9 @@
-﻿import express, { Router } from "express";
+import express, { Router } from "express";
 import jwt from "jsonwebtoken";
 import { body, validationResult } from "express-validator";
 import prisma from "../config/database";
 import { protect } from "../middleware/auth";
-import { sendLoginEmail } from "../services/emailService"; // ðŸ‘ˆ import email service
+import { sendLoginEmail, sendWelcomeEmail } from "../services/emailService"; // Updated imports
 import { sendAdminNotification } from "../services/emailService"; // new
 
 const router = Router();
@@ -62,25 +62,27 @@ router.post(
       }
 
       const user = await prisma.user.create({
-        username,
-        email,
-        password,
-        firstName,
-        lastName,
-        role: role || "student",
+        data: {
+          username,
+          email,
+          password,
+          firstName,
+          lastName,
+          role: role || "student",
+        }
       });
 
-      const token = generateToken(user._id.toString());
+      const token = generateToken(user.id.toString());
 
-      // ðŸ‘‡ Send Welcome Email
-      await sendLoginEmail(user.email);
+      // Send Welcome Email
+      await sendWelcomeEmail(user.email, user.firstName);
 
       res.status(201).json({
         success: true,
         message: "User registered successfully",
         token,
         user: {
-          id: user._id,
+          id: user.id,
           username: user.username,
           email: user.email,
           firstName: user.firstName,

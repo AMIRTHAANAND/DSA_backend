@@ -14,3 +14,13 @@ ADMIN_EMAIL=super-admin@example.com
 # 3. Replace 'super-admin@example.com' with the super admin's email
 # 4. Enable 2FA on your Gmail account
 # 5. Generate an App Password: https://myaccount.google.com/apppasswords
+
+# Email Features:
+# - Welcome Email: Sent to new users upon registration
+# - Login Notification: Sent when users log in
+# - Admin Notifications: Sent to super admin when new admins register
+# - Approval/Rejection Emails: Sent when admin accounts are approved/rejected
+
+# Troubleshooting:
+# - If you see "Missing credentials for 'PLAIN'" error, check that EMAIL_USER and EMAIL_PASS are correctly set
+# - For Gmail with 2FA, you MUST use an App Password, not your regular password
