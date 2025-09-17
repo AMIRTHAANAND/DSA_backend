@@ -62,14 +62,18 @@ router.post(
         });
       }
 
+      // Hash password and normalize role
+      const passwordHash = await bcrypt.hash(password, 12);
+      const normalizedRole = (role || 'STUDENT').toString().toUpperCase();
+
       const user = await prisma.user.create({
         data: {
           username,
           email,
-          password,
+          password: passwordHash,
           firstName,
           lastName,
-          role: role || "student",
+          role: normalizedRole as any,
         }
       });
 
@@ -137,7 +141,21 @@ router.post(
       if (!user.isActive)
         return res.status(401).json({ success: false, error: "Account is deactivated" });
 
-      const isMatch = await bcrypt.compare(password, user.password || '');
+      let isMatch = await bcrypt.compare(password, user.password || '');
+      if (!isMatch) {
+        // Legacy plaintext fallback: if stored password isn't a bcrypt hash
+        const looksHashed = (user.password || '').startsWith('$2');
+        if (!looksHashed && user.password) {
+          // Compare as plaintext
+          if (password === user.password) {
+            // Upgrade to hashed password
+            const newHash = await bcrypt.hash(password, 12);
+            await prisma.user.update({ where: { id: user.id }, data: { password: newHash } });
+            isMatch = true;
+          }
+        }
+      }
+
       if (!isMatch) return res.status(401).json({ success: false, error: "Invalid credentials" });
 
       await prisma.user.update({ where: { id: user.id }, data: { lastLogin: new Date() } });
