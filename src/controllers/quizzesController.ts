@@ -37,6 +37,7 @@ export const getQuizzes = async (req: Request, res: Response): Promise<void> => 
           description: true,
           category: true,
           difficulty: true,
+          questions: true,
           timeLimit: true,
           passingScore: true,
           maxAttempts: true,

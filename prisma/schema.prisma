@@ -7,6 +7,245 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id                 String       @id @default(cuid())
+  username           String?      @unique(map: "username")
+  email              String?      @unique(map: "email")
+  password           String?      @db.VarChar(255)
+  firstName          String?
+  lastName           String?
+  role               UserRole?    @default(STUDENT)
+  isApproved         Boolean?     @default(false)
+  profilePicture     String?
+  bio                String?      @db.Text
+  isActive           Boolean?     @default(true)
+  lastLogin          DateTime?    @db.DateTime(0)
+  createdAt          DateTime?    @default(now()) @db.DateTime(0)
+  updatedAt          DateTime?    @default(now()) @updatedAt @db.DateTime(0)
+  createdAssignments Assignment[] @relation("AssignmentCreatedBy")
+  updatedAssignments Assignment[] @relation("AssignmentUpdatedBy")
+  loginEvents        LoginEvent[]
+  progress           Progress?
+  createdQuizzes     Quiz[]       @relation("QuizCreatedBy")
+  updatedQuizzes     Quiz[]       @relation("QuizUpdatedBy")
+  createdTopics      Topic[]      @relation("TopicCreatedBy")
+  updatedTopics      Topic[]      @relation("TopicUpdatedBy")
+
+  @@map("users")
+}
+
+model Admin {
+  id         String     @id @default(cuid())
+  name       String?
+  email      String?    @unique(map: "email")
+  password   String?    @db.VarChar(255)
+  isApproved Boolean?   @default(false)
+  role       AdminRole? @default(ADMIN)
+  createdAt  DateTime?  @default(now()) @db.DateTime(0)
+  updatedAt  DateTime?  @default(now()) @updatedAt @db.DateTime(0)
+
+  @@map("admins")
+}
+
+model Topic {
+  id             String          @id @default(cuid())
+  title          String?         @db.VarChar(100)
+  slug           String?         @unique(map: "slug")
+  description    String?         @db.VarChar(500)
+  category       TopicCategory?
+  difficulty     Difficulty?
+  overview       String?         @db.Text
+  explanation    String?         @db.Text
+  pseudocode     String?         @db.Text
+  codeSnippets   Json?
+  complexity     Json?
+  examples       Json?
+  visualizations Json?
+  whyItMatters   String?         @db.Text
+  realWorldApps  Json?
+  prerequisites  Json?
+  estimatedTime  Int?
+  isPublished    Boolean?        @default(false)
+  order_index    Int?            @default(0)
+  tags           Json?
+  createdById    String?
+  updatedById    String?
+  createdAt      DateTime?       @default(now()) @db.DateTime(0)
+  updatedAt      DateTime?       @default(now()) @updatedAt @db.DateTime(0)
+  progress       TopicProgress[]
+  relatedTopics  TopicRelation[] @relation("ParentTopic")
+  relatedFrom    TopicRelation[] @relation("RelatedTopic")
+  createdBy      User?           @relation("TopicCreatedBy", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "topics_ibfk_1")
+  updatedBy      User?           @relation("TopicUpdatedBy", fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "topics_ibfk_2")
+
+  @@index([createdById], map: "createdById")
+  @@index([updatedById], map: "updatedById")
+  @@map("topics")
+}
+
+model TopicRelation {
+  id             String  @id @default(cuid())
+  parentTopicId  String?
+  relatedTopicId String?
+  parentTopic    Topic?  @relation("ParentTopic", fields: [parentTopicId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "topic_relations_ibfk_1")
+  relatedTopic   Topic?  @relation("RelatedTopic", fields: [relatedTopicId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "topic_relations_ibfk_2")
+
+  @@unique([parentTopicId, relatedTopicId], map: "unique_relation")
+  @@index([relatedTopicId], map: "relatedTopicId")
+  @@map("topic_relations")
+}
+
+model Assignment {
+  id               String                @id @default(cuid())
+  title            String?               @db.VarChar(100)
+  description      String?               @db.VarChar(1000)
+  problemStatement String?               @db.Text
+  difficulty       AssignmentDifficulty?
+  category         AssignmentCategory?
+  constraints      Json?
+  examples         Json?
+  testCases        Json?
+  starterCode      Json?
+  solution         Json?
+  hints            Json?
+  timeLimit        Int?                  @default(1000)
+  memoryLimit      Int?                  @default(128)
+  points           Int?                  @default(10)
+  isPublished      Boolean?              @default(false)
+  tags             Json?
+  createdById      String?
+  updatedById      String?
+  createdAt        DateTime?             @default(now()) @db.DateTime(0)
+  updatedAt        DateTime?             @default(now()) @updatedAt @db.DateTime(0)
+  progress         AssignmentProgress[]
+  createdBy        User?                 @relation("AssignmentCreatedBy", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "assignments_ibfk_1")
+  updatedBy        User?                 @relation("AssignmentUpdatedBy", fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "assignments_ibfk_2")
+
+  @@index([createdById], map: "createdById")
+  @@index([updatedById], map: "updatedById")
+  @@map("assignments")
+}
+
+model Quiz {
+  id           String         @id @default(cuid())
+  title        String?        @db.VarChar(100)
+  description  String?        @db.VarChar(500)
+  category     TopicCategory?
+  difficulty   Difficulty?
+  questions    Json?
+  timeLimit    Int?           @default(0)
+  passingScore Int?           @default(70)
+  maxAttempts  Int?           @default(0)
+  isPublished  Boolean?       @default(false)
+  tags         Json?
+  createdById  String?
+  updatedById  String?
+  createdAt    DateTime?      @default(now()) @db.DateTime(0)
+  updatedAt    DateTime?      @default(now()) @updatedAt @db.DateTime(0)
+  progress     QuizProgress[]
+  createdBy    User?          @relation("QuizCreatedBy", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "quizzes_ibfk_1")
+  updatedBy    User?          @relation("QuizUpdatedBy", fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "quizzes_ibfk_2")
+
+  @@index([createdById], map: "createdById")
+  @@index([updatedById], map: "updatedById")
+  @@map("quizzes")
+}
+
+model Progress {
+  id                   String               @id @default(cuid())
+  userId               String?              @unique(map: "userId")
+  overallScore         Int?                 @default(0)
+  totalTopics          Int?                 @default(0)
+  completedTopics      Int?                 @default(0)
+  totalAssignments     Int?                 @default(0)
+  completedAssignments Int?                 @default(0)
+  totalQuizzes         Int?                 @default(0)
+  completedQuizzes     Int?                 @default(0)
+  streakDays           Int?                 @default(0)
+  lastActivityDate     DateTime?            @default(now()) @db.DateTime(0)
+  createdAt            DateTime?            @default(now()) @db.DateTime(0)
+  updatedAt            DateTime?            @default(now()) @updatedAt @db.DateTime(0)
+  assignmentProgress   AssignmentProgress[]
+  user                 User?                @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "progress_ibfk_1")
+  quizProgress         QuizProgress[]
+  topicProgress        TopicProgress[]
+
+  @@map("progress")
+}
+
+model TopicProgress {
+  id               String          @id @default(cuid())
+  progressId       String?
+  topicId          String?
+  status           ProgressStatus? @default(NOT_STARTED)
+  timeSpent        Int?            @default(0)
+  lastAccessed     DateTime?       @default(now()) @db.DateTime(0)
+  completedAt      DateTime?       @db.DateTime(0)
+  quizScores       Json?
+  assignmentScores Json?
+  progress         Progress?       @relation(fields: [progressId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "topic_progress_ibfk_1")
+  topic            Topic?          @relation(fields: [topicId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "topic_progress_ibfk_2")
+
+  @@unique([progressId, topicId], map: "unique_topic_progress")
+  @@index([topicId], map: "topicId")
+  @@map("topic_progress")
+}
+
+model AssignmentProgress {
+  id            String          @id @default(cuid())
+  progressId    String?
+  assignmentId  String?
+  status        ProgressStatus? @default(NOT_STARTED)
+  submission    Json?
+  testResults   Json?
+  score         Int?            @default(0)
+  maxScore      Int?
+  timeSpent     Int?            @default(0)
+  attempts      Int?            @default(0)
+  lastAttemptAt DateTime?       @db.DateTime(0)
+  completedAt   DateTime?       @db.DateTime(0)
+  progress      Progress?       @relation(fields: [progressId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "assignment_progress_ibfk_1")
+  assignment    Assignment?     @relation(fields: [assignmentId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "assignment_progress_ibfk_2")
+
+  @@unique([progressId, assignmentId], map: "unique_assignment_progress")
+  @@index([assignmentId], map: "assignmentId")
+  @@map("assignment_progress")
+}
+
+model QuizProgress {
+  id          String          @id @default(cuid())
+  progressId  String?
+  quizId      String?
+  status      ProgressStatus? @default(NOT_STARTED)
+  score       Int?            @default(0)
+  maxScore    Int?
+  percentage  Int?            @default(0)
+  timeSpent   Int?            @default(0)
+  answers     Json?
+  startedAt   DateTime?       @db.DateTime(0)
+  completedAt DateTime?       @db.DateTime(0)
+  attempts    Int?            @default(0)
+  maxAttempts Int?            @default(0)
+  progress    Progress?       @relation(fields: [progressId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "quiz_progress_ibfk_1")
+  quiz        Quiz?           @relation(fields: [quizId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "quiz_progress_ibfk_2")
+
+  @@unique([progressId, quizId], map: "unique_quiz_progress")
+  @@index([quizId], map: "quizId")
+  @@map("quiz_progress")
+}
+
+model LoginEvent {
+  id        String    @id @default(cuid())
+  userId    String?
+  ip        String?
+  userAgent String?   @db.Text
+  createdAt DateTime? @default(now()) @db.DateTime(0)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "login_events_ibfk_1")
+
+  @@index([userId], map: "userId")
+  @@map("login_events")
+}
+
 enum UserRole {
   STUDENT
   ADMIN
@@ -47,266 +286,9 @@ enum AssignmentCategory {
   OTHER
 }
 
-enum QuestionType {
-  MULTIPLE_CHOICE
-  TRUE_FALSE
-  FILL_IN_BLANK
-  CODE_COMPLETION
-}
-
 enum ProgressStatus {
   NOT_STARTED
   IN_PROGRESS
   COMPLETED
   SUBMITTED
 }
-
-model User {
-  id                 String               @id @default(cuid())
-  username           String               @unique
-  email              String               @unique
-  password           String               @db.VarChar(255)
-  firstName          String
-  lastName           String
-  role               UserRole             @default(STUDENT)
-  isApproved         Boolean              @default(false)
-  profilePicture     String?
-  bio                String?              @db.Text
-  isActive           Boolean              @default(true)
-  lastLogin          DateTime?
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-
-  loginEvents        LoginEvent[]
-  createdTopics      Topic[]              @relation("TopicCreatedBy")
-  updatedTopics      Topic[]              @relation("TopicUpdatedBy")
-  createdAssignments Assignment[]         @relation("AssignmentCreatedBy")
-  updatedAssignments Assignment[]         @relation("AssignmentUpdatedBy")
-  createdQuizzes     Quiz[]               @relation("QuizCreatedBy")
-  updatedQuizzes     Quiz[]               @relation("QuizUpdatedBy")
-  progress           Progress?
-  
-  @@map("users")
-}
-
-model Admin {
-  id         String    @id @default(cuid())
-  name       String
-  email      String    @unique
-  password   String    @db.VarChar(255)
-  isApproved Boolean   @default(false)
-  role       AdminRole @default(ADMIN)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-
-  @@map("admins")
-}
-
-model Topic {
-  id             String         @id @default(cuid())
-  title          String         @db.VarChar(100)
-  slug           String         @unique
-  description    String         @db.VarChar(500)
-  category       TopicCategory
-  difficulty     Difficulty
-  
-  overview       String         @db.Text
-  explanation    String         @db.Text
-  pseudocode     String         @db.Text
-  codeSnippets   Json
-  complexity     Json
-  examples       Json
-  visualizations Json
-  whyItMatters   String         @db.Text
-  realWorldApps  Json
-  
-  prerequisites  Json
-  estimatedTime  Int
-  isPublished    Boolean        @default(false)
-  order          Int            @default(0)
-  tags           Json
-  
-  createdById    String
-  updatedById    String
-  createdBy      User           @relation("TopicCreatedBy", fields: [createdById], references: [id])
-  updatedBy      User           @relation("TopicUpdatedBy", fields: [updatedById], references: [id])
-  
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-
-  relatedTopics  TopicRelation[] @relation("ParentTopic")
-  relatedFrom    TopicRelation[] @relation("RelatedTopic")
-  progress       TopicProgress[]
-
-  @@map("topics")
-}
-
-model TopicRelation {
-  id             String @id @default(cuid())
-  parentTopicId  String
-  relatedTopicId String
-  parentTopic    Topic  @relation("ParentTopic", fields: [parentTopicId], references: [id], onDelete: Cascade)
-  relatedTopic   Topic  @relation("RelatedTopic", fields: [relatedTopicId], references: [id], onDelete: Cascade)
-
-  @@unique([parentTopicId, relatedTopicId])
-  @@map("topic_relations")
-}
-
-model Assignment {
-  id               String               @id @default(cuid())
-  title            String               @db.VarChar(100)
-  description      String               @db.VarChar(1000)
-  problemStatement String               @db.Text
-  difficulty       AssignmentDifficulty
-  category         AssignmentCategory
-  
-  constraints      Json
-  examples         Json
-  testCases        Json
-  starterCode      Json
-  solution         Json
-  hints            Json
-  
-  timeLimit        Int                  @default(1000)
-  memoryLimit      Int                  @default(128)
-  points           Int                  @default(10)
-  isPublished      Boolean              @default(false)
-  tags             Json
-  
-  createdById      String
-  updatedById      String
-  createdBy        User                 @relation("AssignmentCreatedBy", fields: [createdById], references: [id])
-  updatedBy        User                 @relation("AssignmentUpdatedBy", fields: [updatedById], references: [id])
-  
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
-
-  progress         AssignmentProgress[]
-
-  @@map("assignments")
-}
-
-model Quiz {
-  id           String        @id @default(cuid())
-  title        String        @db.VarChar(100)
-  description  String        @db.VarChar(500)
-  category     TopicCategory
-  difficulty   Difficulty
-  
-  questions    Json
-  timeLimit    Int           @default(0)
-  passingScore Int           @default(70)
-  maxAttempts  Int           @default(0)
-  isPublished  Boolean       @default(false)
-  tags         Json
-  
-  createdById  String
-  updatedById  String
-  createdBy    User          @relation("QuizCreatedBy", fields: [createdById], references: [id])
-  updatedBy    User          @relation("QuizUpdatedBy", fields: [updatedById], references: [id])
-  
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-
-  progress     QuizProgress[]
-
-  @@map("quizzes")
-}
-
-model Progress {
-  id                     String @id @default(cuid())
-  userId                 String @unique
-  user                   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  overallScore           Int    @default(0)
-  totalTopics            Int    @default(0)
-  completedTopics        Int    @default(0)
-  totalAssignments       Int    @default(0)
-  completedAssignments   Int    @default(0)
-  totalQuizzes           Int    @default(0)
-  completedQuizzes       Int    @default(0)
-  streakDays             Int    @default(0)
-  lastActivityDate       DateTime @default(now())
-  
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
-
-  topicProgress          TopicProgress[]
-  assignmentProgress     AssignmentProgress[]
-  quizProgress           QuizProgress[]
-
-  @@map("progress")
-}
-
-model TopicProgress {
-  id               String         @id @default(cuid())
-  progressId       String
-  topicId          String
-  progress         Progress       @relation(fields: [progressId], references: [id], onDelete: Cascade)
-  topic            Topic          @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  
-  status           ProgressStatus @default(NOT_STARTED)
-  timeSpent        Int            @default(0)
-  lastAccessed     DateTime       @default(now())
-  completedAt      DateTime?
-  quizScores       Json
-  assignmentScores Json
-
-  @@unique([progressId, topicId])
-  @@map("topic_progress")
-}
-
-model AssignmentProgress {
-  id               String         @id @default(cuid())
-  progressId       String
-  assignmentId     String
-  progress         Progress       @relation(fields: [progressId], references: [id], onDelete: Cascade)
-  assignment       Assignment     @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  
-  status           ProgressStatus @default(NOT_STARTED)
-  submission       Json?
-  testResults      Json?
-  score            Int            @default(0)
-  maxScore         Int
-  timeSpent        Int            @default(0)
-  attempts         Int            @default(0)
-  lastAttemptAt    DateTime?
-  completedAt      DateTime?
-
-  @@unique([progressId, assignmentId])
-  @@map("assignment_progress")
-}
-
-model QuizProgress {
-  id            String         @id @default(cuid())
-  progressId    String
-  quizId        String
-  progress      Progress       @relation(fields: [progressId], references: [id], onDelete: Cascade)
-  quiz          Quiz           @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  
-  status        ProgressStatus @default(NOT_STARTED)
-  score         Int            @default(0)
-  maxScore      Int
-  percentage    Int            @default(0)
-  timeSpent     Int            @default(0)
-  answers       Json
-  startedAt     DateTime?
-  completedAt   DateTime?
-  attempts      Int            @default(0)
-  maxAttempts   Int            @default(0)
-
-  @@unique([progressId, quizId])
-  @@map("quiz_progress")
-}
-
-model LoginEvent {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ip        String?
-  userAgent String?  @db.Text
-  createdAt DateTime @default(now())
-
-  @@map("login_events")
-}
-

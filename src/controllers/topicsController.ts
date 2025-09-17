@@ -40,7 +40,7 @@ export const getTopics = async (req: Request, res: Response): Promise<void> => {
           difficulty: true,
           estimatedTime: true,
           isPublished: true,
-          order: true,
+          order_index: true,
           tags: true,
           createdAt: true,
           createdBy: {
@@ -52,7 +52,7 @@ export const getTopics = async (req: Request, res: Response): Promise<void> => {
           }
         },
         orderBy: [
-          { order: 'asc' },
+          { order_index: 'asc' },
           { createdAt: 'desc' }
         ],
         skip,
@@ -218,7 +218,7 @@ export const createTopic = async (req: Request, res: Response): Promise<void> =>
         prerequisites: prerequisites || [],
         estimatedTime,
         isPublished: isPublished || false,
-        order: order || 0,
+        order_index: order || 0,
         tags: tags || [],
         createdById: userId,
         updatedById: userId,

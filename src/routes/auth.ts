@@ -5,6 +5,7 @@ import prisma from "../config/database";
 import { protect } from "../middleware/auth";
 import { sendLoginEmail, sendWelcomeEmail } from "../services/emailService"; // Updated imports
 import { sendAdminNotification } from "../services/emailService"; // new
+import bcrypt from 'bcryptjs';
 
 const router = Router();
 
@@ -136,15 +137,14 @@ router.post(
       if (!user.isActive)
         return res.status(401).json({ success: false, error: "Account is deactivated" });
 
-      const isMatch = await user.comparePassword(password);
+      const isMatch = await bcrypt.compare(password, user.password || '');
       if (!isMatch) return res.status(401).json({ success: false, error: "Invalid credentials" });
 
-      user.lastLogin = new Date();
-      await user.save();
+      await prisma.user.update({ where: { id: user.id }, data: { lastLogin: new Date() } });
 
-      const token = generateToken(user._id.toString());
+      const token = generateToken(user.id.toString());
 
-      // ðŸ‘‡ Send Login Notification Email
+      // Send Login Notification Email
       await sendLoginEmail(user.email);
 
       res.json({
@@ -152,14 +152,13 @@ router.post(
         message: "Login successful",
         token,
         user: {
-          id: user._id,
+          id: user.id,
           username: user.username,
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.role,
-          profilePicture: user.profilePicture,
-          lastLogin: user.lastLogin,
+          lastLogin: new Date(),
         },
       });
     } catch (error) {

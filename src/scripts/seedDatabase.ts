@@ -1,4 +1,4 @@
-﻿import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 
@@ -67,6 +67,10 @@ async function seedDatabase() {
 
     console.log('✅ Created users');
 
+    // Fetch admin user id for relations
+    const admin = await prisma.user.findUnique({ where: { email: 'admin@example.com' }, select: { id: true } });
+    if (!admin) throw new Error('Admin user not found after creation');
+
     // Create topics
     const topics = await prisma.topic.createMany({
       data: [
@@ -74,61 +78,61 @@ async function seedDatabase() {
           title: 'Arrays and Strings',
           slug: 'arrays-and-strings',
           description: 'Learn about arrays and string manipulation in programming.',
-          content: 'This topic covers fundamental concepts of arrays and strings...',
+          overview: 'This topic covers fundamental concepts of arrays and strings...',
           difficulty: 'BEGINNER',
           category: 'DATA_STRUCTURES',
           estimatedTime: 120,
           isPublished: true,
-          createdBy: 'admin_user',
-          updatedBy: 'admin_user',
+          createdById: admin.id,
+          updatedById: admin.id,
         },
         {
           title: 'Linked Lists',
           slug: 'linked-lists',
           description: 'Understanding linked list data structure and its operations.',
-          content: 'Linked lists are linear data structures...',
+          overview: 'Linked lists are linear data structures...',
           difficulty: 'INTERMEDIATE',
           category: 'DATA_STRUCTURES',
           estimatedTime: 180,
           isPublished: true,
-          createdBy: 'admin_user',
-          updatedBy: 'admin_user',
+          createdById: admin.id,
+          updatedById: admin.id,
         },
         {
           title: 'Binary Trees',
           slug: 'binary-trees',
           description: 'Learn about binary tree data structures and tree traversal.',
-          content: 'Binary trees are hierarchical data structures...',
+          overview: 'Binary trees are hierarchical data structures...',
           difficulty: 'ADVANCED',
           category: 'DATA_STRUCTURES',
           estimatedTime: 240,
           isPublished: true,
-          createdBy: 'admin_user',
-          updatedBy: 'admin_user',
+          createdById: admin.id,
+          updatedById: admin.id,
         },
         {
           title: 'Sorting Algorithms',
           slug: 'sorting-algorithms',
           description: 'Understanding various sorting algorithms and their complexities.',
-          content: 'Sorting algorithms are fundamental in computer science...',
+          overview: 'Sorting algorithms are fundamental in computer science...',
           difficulty: 'INTERMEDIATE',
           category: 'ALGORITHMS',
           estimatedTime: 200,
           isPublished: true,
-          createdBy: 'admin_user',
-          updatedBy: 'admin_user',
+          createdById: admin.id,
+          updatedById: admin.id,
         },
         {
           title: 'Dynamic Programming',
           slug: 'dynamic-programming',
           description: 'Learn dynamic programming concepts and problem-solving techniques.',
-          content: 'Dynamic programming is a method for solving complex problems...',
+          overview: 'Dynamic programming is a method for solving complex problems...',
           difficulty: 'ADVANCED',
           category: 'ALGORITHMS',
           estimatedTime: 300,
           isPublished: true,
-          createdBy: 'admin_user',
-          updatedBy: 'admin_user',
+          createdById: admin.id,
+          updatedById: admin.id,
         },
       ],
     });
@@ -140,39 +144,36 @@ async function seedDatabase() {
       data: [
         {
           title: 'Array Rotation',
-          slug: 'array-rotation',
           description: 'Implement array rotation algorithm.',
-          instructions: 'Write a function to rotate an array by k positions.',
-          difficulty: 'BEGINNER',
-          category: 'DATA_STRUCTURES',
+          problemStatement: 'Write a function to rotate an array by k positions.',
+          difficulty: 'EASY',
+          category: 'ARRAYS',
           timeLimit: 30,
           isPublished: true,
-          createdBy: 'admin_user',
-          updatedBy: 'admin_user',
+          createdById: admin.id,
+          updatedById: admin.id,
         },
         {
           title: 'Reverse Linked List',
-          slug: 'reverse-linked-list',
           description: 'Reverse a singly linked list.',
-          instructions: 'Implement a function to reverse a linked list in-place.',
-          difficulty: 'INTERMEDIATE',
-          category: 'DATA_STRUCTURES',
+          problemStatement: 'Implement a function to reverse a linked list in-place.',
+          difficulty: 'MEDIUM',
+          category: 'LINKED_LISTS',
           timeLimit: 45,
           isPublished: true,
-          createdBy: 'admin_user',
-          updatedBy: 'admin_user',
+          createdById: admin.id,
+          updatedById: admin.id,
         },
         {
           title: 'Binary Tree Traversal',
-          slug: 'binary-tree-traversal',
           description: 'Implement different tree traversal methods.',
-          instructions: 'Implement preorder, inorder, and postorder traversal.',
-          difficulty: 'ADVANCED',
-          category: 'DATA_STRUCTURES',
+          problemStatement: 'Implement preorder, inorder, and postorder traversal.',
+          difficulty: 'HARD',
+          category: 'TREES',
           timeLimit: 60,
           isPublished: true,
-          createdBy: 'admin_user',
-          updatedBy: 'admin_user',
+          createdById: admin.id,
+          updatedById: admin.id,
         },
       ],
     });
@@ -191,7 +192,7 @@ async function seedDatabase() {
           passingScore: 70,
           maxAttempts: 3,
           isPublished: true,
-          createdBy: 'admin_user',
+          createdById: admin.id,
           questions: [
             {
               question: 'What is the time complexity of accessing an element in an array?',
@@ -216,7 +217,7 @@ async function seedDatabase() {
           passingScore: 75,
           maxAttempts: 3,
           isPublished: true,
-          createdBy: 'admin_user',
+          createdById: admin.id,
           questions: [
             {
               question: 'What is the main advantage of linked lists over arrays?',

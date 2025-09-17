@@ -54,9 +54,43 @@ export const getUserProgress = async (req: Request, res: Response): Promise<void
       progress = await prisma.progress.create({
         data: { userId },
         include: {
-          topicProgress: true,
-          assignmentProgress: true,
-          quizProgress: true,
+          topicProgress: {
+            include: {
+              topic: {
+                select: {
+                  id: true,
+                  title: true,
+                  slug: true,
+                  difficulty: true,
+                  estimatedTime: true,
+                }
+              }
+            }
+          },
+          assignmentProgress: {
+            include: {
+              assignment: {
+                select: {
+                  id: true,
+                  title: true,
+                  difficulty: true,
+                  points: true,
+                }
+              }
+            }
+          },
+          quizProgress: {
+            include: {
+              quiz: {
+                select: {
+                  id: true,
+                  title: true,
+                  difficulty: true,
+                  passingScore: true,
+                }
+              }
+            }
+          },
         }
       });
     }

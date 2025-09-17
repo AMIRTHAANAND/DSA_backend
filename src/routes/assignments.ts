@@ -1,4 +1,4 @@
-﻿import express, { Request, Response } from 'express';
+import express, { Request, Response } from 'express';
 import { body, query, validationResult } from "express-validator";
 import prisma from '../config/database';
 import { protect, authorize, AuthRequest } from '../middleware/auth';
@@ -29,32 +29,29 @@ router.get(
     try {
       const { page = 1, limit = 10, difficulty, category, search, tags } = req.query;
 
-      const filter: any = { isPublished: true };
+      const where: any = { isPublished: true };
 
-      if (difficulty) filter.difficulty = difficulty;
-      if (category) filter.category = category;
+      if (difficulty) where.difficulty = difficulty;
+      if (category) where.category = category;
       if (search) {
-        filter.$or = [
-          { title: { $regex: search, $options: 'i' } },
-          { description: { $regex: search, $options: 'i' } },
-          { tags: { $in: [new RegExp(search as string, 'i')] } }
+        where.OR = [
+          { title: { contains: String(search), mode: 'insensitive' } },
+          { description: { contains: String(search), mode: 'insensitive' } }
         ];
       }
-      if (tags) {
-        const tagArray = (tags as string).split(',').map(tag => tag.trim());
-        filter.tags = { $in: tagArray };
-      }
+      // tags is a JSON field; complex search omitted.
 
       const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
 
-      const assignments = await prisma.assignment.find(filter)
-        .populate('createdBy', 'username firstName lastName')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit as string))
-        .select('-testCases -solution');
+      const assignments = await prisma.assignment.findMany({
+        where,
+        skip,
+        take: parseInt(limit as string),
+        orderBy: { createdAt: 'desc' },
+        include: { createdBy: { select: { username: true, firstName: true, lastName: true } } }
+      });
 
-      const total = await prisma.assignment.countDocuments(filter);
+      const total = await prisma.assignment.count({ where });
 
       res.json({
         success: true,
@@ -80,14 +77,21 @@ router.get(
  */
 router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const assignment = await prisma.assignment.findOne({ _id: req.params.id, isPublished: true })
-      .populate('createdBy', 'username firstName lastName');
+    const assignment = await prisma.assignment.findFirst({
+      where: { id: req.params.id, isPublished: true },
+      include: { createdBy: { select: { username: true, firstName: true, lastName: true } } }
+    });
 
-    if (!assignment) return res.status(404).json({ success: false, error: 'prisma.assignment not found' });
+    if (!assignment) return res.status(404).json({ success: false, error: 'Assignment not found' });
 
-    const publicAssignment = assignment;
-    publicAssignment.testCases = publicAssignment.testCases.filter((tc: any) => !tc.isHidden);
-    publicAssignment.solution = undefined;
+    // Remove hidden test cases and solutions from response if present
+    const publicAssignment: any = { ...assignment };
+    if (Array.isArray(publicAssignment.testCases)) {
+      publicAssignment.testCases = publicAssignment.testCases.filter((tc: any) => !tc?.isHidden);
+    }
+    if (publicAssignment.solution) {
+      publicAssignment.solution = undefined;
+    }
 
     res.json({ success: true, data: publicAssignment });
   } catch (error) {
@@ -122,12 +126,14 @@ router.post(
 
     try {
       const assignment = await prisma.assignment.create({
-        ...req.body,
-        createdBy: req.user!.id,
-        updatedBy: req.user!.id
+        data: {
+          ...req.body,
+          createdById: req.user!.id,
+          updatedById: req.user!.id
+        }
       });
 
-      res.status(201).json({ success: true, message: 'prisma.assignment created successfully', data: assignment });
+      res.status(201).json({ success: true, message: 'Assignment created successfully', data: assignment });
     } catch (error) {
       console.error('Create assignment error:', error);
       res.status(500).json({ success: false, error: 'Server error while creating assignment' });

@@ -1,7 +1,8 @@
-﻿import express from 'express';
+import express from 'express';
 import { body, query, param, validationResult } from 'express-validator';
 import prisma from '../config/database';
 import { protect, authorize, AuthRequest } from '../middleware/auth';
+import bcrypt from 'bcryptjs';
 
 const router = express.Router();
 
@@ -106,11 +107,14 @@ router.put(
       });
       if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
-      const isMatch = await user.comparePassword(currentPassword);
+      const isMatch = await bcrypt.compare(currentPassword, user.password || '');
       if (!isMatch) return res.status(400).json({ success: false, error: 'Current password is incorrect' });
 
-      user.password = newPassword;
-      await user.save();
+      const newHash = await bcrypt.hash(newPassword, 12);
+      await prisma.user.update({
+        where: { id: req.user!.id },
+        data: { password: newHash }
+      });
 
       res.json({ success: true, message: 'Password changed successfully' });
     } catch (error) {
@@ -221,15 +225,15 @@ router.put(
 // @access  Private (Admin only)
 router.delete('/:id', [protect, authorize('admin')], async (req: AuthRequest, res: express.Response) => {
   try {
-    const user = await prisma.user.findById(req.params.id);
+    const user = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
-    if (user._id.toString() === req.user!.id) {
+    if (user.id === req.user!.id) {
       return res.status(400).json({ success: false, error: 'Cannot delete your own account' });
     }
 
-    await prisma.user.findByIdAndDelete(req.params.id);
-    res.json({ success: true, message: 'prisma.user deleted successfully' });
+    await prisma.user.delete({ where: { id: req.params.id } });
+    res.json({ success: true, message: 'User deleted successfully' });
   } catch (error) {
     console.error('Delete user error:', error);
     res.status(500).json({ success: false, error: 'Server error while deleting user' });
@@ -241,20 +245,22 @@ router.delete('/:id', [protect, authorize('admin')], async (req: AuthRequest, re
 // @access  Private (Admin only)
 router.patch('/:id/status', [protect, authorize('admin')], async (req: AuthRequest, res: express.Response) => {
   try {
-    const user = await prisma.user.findById(req.params.id);
+    const user = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
-    if (user._id.toString() === req.user!.id) {
+    if (user.id === req.user!.id) {
       return res.status(400).json({ success: false, error: 'Cannot deactivate your own account' });
     }
 
-    user.isActive = !user.isActive;
-    await user.save();
+    const updated = await prisma.user.update({
+      where: { id: req.params.id },
+      data: { isActive: !user.isActive }
+    });
 
     res.json({
       success: true,
-      message: `prisma.user ${user.isActive ? 'activated' : 'deactivated'} successfully`,
-      data: { isActive: user.isActive }
+      message: `User ${updated.isActive ? 'activated' : 'deactivated'} successfully`,
+      data: { isActive: updated.isActive }
     });
   } catch (error) {
     console.error('Toggle user status error:', error);

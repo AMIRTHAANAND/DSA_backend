@@ -1,23 +1,26 @@
-﻿import express, { Response } from 'express';
+import express, { Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import prisma from '../config/database';
 import { protect, AuthRequest } from '../middleware/auth';
 
 const router = express.Router();
 
-/**
- * @route   GET /api/progress
- * @desc    Get current user's learning progress
- * @access  Private
- */
+// GET /api/progress
 router.get('/', protect, async (req: AuthRequest, res: Response) => {
   if (!req.user) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
   try {
-    let progress = await prisma.progress.findOne({ userId: req.user.id });
+    let progress = await prisma.progress.findFirst({
+      where: { userId: req.user.id },
+      include: { topicProgress: true },
+    });
 
     if (!progress) {
-      progress = await prisma.progress.create({ userId: req.user.id });
+      progress = await prisma.progress.create({
+        data: { userId: req.user.id },
+        include: { topicProgress: true },
+      });
+      if (!progress.topicProgress) progress.topicProgress = [];
     }
 
     res.json({ success: true, data: progress });
@@ -27,11 +30,7 @@ router.get('/', protect, async (req: AuthRequest, res: Response) => {
   }
 });
 
-/**
- * @route   POST /api/progress/topic
- * @desc    Update topic progress
- * @access  Private
- */
+// POST /api/progress/topic
 router.post(
   '/topic',
   protect,
@@ -46,37 +45,45 @@ router.post(
 
     const { topicId, status, timeSpent = 0 } = req.body;
 
+    // ✅ Always cast to string because schema expects String
+    const validTopicId: string = String(topicId);
+
     try {
-      let progress = await prisma.progress.findOne({ userId: req.user.id });
-      if (!progress) progress = await prisma.progress.create({ userId: req.user.id });
+      let progress = await prisma.progress.findFirst({
+        where: { userId: req.user.id },
+        include: { topicProgress: true },
+      });
 
-      const topicIndex = progress.topicprisma.progress.findIndex(tp => tp.topicId.toString() === topicId);
-
-      if (topicIndex >= 0) {
-        const tp = progress.topicprisma.progress[topicIndex];
-        tp.status = status;
-        tp.timeSpent += timeSpent;
-        tp.lastAccessed = new Date();
-        if (status === 'completed' && !tp.completedAt) tp.completedAt = new Date();
-      } else {
-        progress.topicprisma.progress.push({
-          topicId,
-          status,
-          timeSpent,
-          lastAccessed: new Date(),
-          completedAt: status === 'completed' ? new Date() : undefined,
-          quizScores: [],
-          assignmentScores: [],
+      if (!progress) {
+        progress = await prisma.progress.create({
+          data: { userId: req.user.id },
+          include: { topicProgress: true },
         });
       }
 
-      progress.completedTopics = progress.topicprisma.progress.filter(tp => tp.status === 'completed').length;
-      progress.totalTopics = progress.topicprisma.progress.length;
-      progress.lastActivityDate = new Date();
+      const mappedStatus = status === 'completed' ? 'COMPLETED' : status === 'in-progress' ? 'IN_PROGRESS' : 'NOT_STARTED';
 
-      await progress.save();
+      await prisma.topicProgress.upsert({
+        where: {
+          progressId_topicId: { progressId: progress.id, topicId: validTopicId },
+        },
+        update: {
+          status: mappedStatus as any,
+          timeSpent: { increment: timeSpent },
+          lastAccessed: new Date(),
+          completedAt: status === 'completed' ? new Date() : null,
+        },
+        create: {
+          progressId: progress.id,
+          topicId: validTopicId,
+          status: mappedStatus as any,
+          timeSpent,
+          lastAccessed: new Date(),
+          completedAt: status === 'completed' ? new Date() : null,
+        },
+      });
 
-      res.json({ success: true, message: 'Topic progress updated successfully', data: progress });
+      res.json({ success: true, message: 'Topic progress updated successfully' });
     } catch (error) {
       console.error('Update topic progress error:', error);
       res.status(500).json({ success: false, error: 'Server error while updating topic progress' });

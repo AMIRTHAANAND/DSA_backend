@@ -17,22 +17,39 @@ export const errorHandler = (
   // Log error
   console.error('❌ Error:', err);
 
-  // Mongoose bad ObjectId
-  if (err.name === 'CastError') {
-    const message = 'Resource not found';
-    error = { ...error, message, statusCode: 404 };
+  // Prisma/MySQL specific errors
+  if (err.name === 'PrismaClientKnownRequestError') {
+    const prismaError = err as any;
+    
+    // Unique constraint violation (duplicate key)
+    if (prismaError.code === 'P2002') {
+      const message = 'Duplicate field value entered';
+      error = { ...error, message, statusCode: 400 };
+    }
+    
+    // Record not found
+    if (prismaError.code === 'P2025') {
+      const message = 'Resource not found';
+      error = { ...error, message, statusCode: 404 };
+    }
+    
+    // Foreign key constraint violation
+    if (prismaError.code === 'P2003') {
+      const message = 'Invalid reference to related resource';
+      error = { ...error, message, statusCode: 400 };
+    }
   }
 
-  // Mongoose duplicate key
-  if (err.name === 'MongoError' && (err as any).code === 11000) {
-    const message = 'Duplicate field value entered';
+  // Prisma validation errors
+  if (err.name === 'PrismaClientValidationError') {
+    const message = 'Invalid data provided';
     error = { ...error, message, statusCode: 400 };
   }
 
-  // Mongoose validation error
-  if (err.name === 'ValidationError') {
-    const message = Object.values((err as any).errors).map((val: any) => val.message).join(', ');
-    error = { ...error, message, statusCode: 400 };
+  // MySQL connection errors
+  if (err.name === 'PrismaClientInitializationError') {
+    const message = 'Database connection failed';
+    error = { ...error, message, statusCode: 500 };
   }
 
   // JWT errors

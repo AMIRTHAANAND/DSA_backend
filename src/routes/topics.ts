@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import { body, query, param, validationResult } from 'express-validator';
 import prisma from '../config/database';
 import { protect, authorize, AuthRequest } from '../middleware/auth';
@@ -25,31 +25,29 @@ router.get(
     try {
       const { page = 1, limit = 10, category, difficulty, search, tags } = req.query;
 
-      const filter: any = { isPublished: true };
-      if (category) filter.category = category;
-      if (difficulty) filter.difficulty = difficulty;
+      const where: any = { isPublished: true };
+      if (category) where.category = category;
+      if (difficulty) where.difficulty = difficulty;
       if (search) {
-        filter.$or = [
-          { title: { $regex: search, $options: 'i' } },
-          { description: { $regex: search, $options: 'i' } },
-          { tags: { $in: [new RegExp(search as string, 'i')] } }
+        where.OR = [
+          { title: { contains: String(search), mode: 'insensitive' } },
+          { description: { contains: String(search), mode: 'insensitive' } }
         ];
       }
-      if (tags) {
-        const tagArray = (tags as string).split(',').map(tag => tag.trim());
-        filter.tags = { $in: tagArray };
-      }
+      // Note: tags is a JSON field; complex search is omitted here.
 
       const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
-      const topics = await prisma.topic.find(filter)
-        .populate('createdBy', 'username firstName lastName')
-        .sort({ order: 1, createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit as string))
-        .select('-content.explanation -content.pseudocode -content.codeSnippets')
-        .lean();
+      const topics = await prisma.topic.findMany({
+        where,
+        skip,
+        take: parseInt(limit as string),
+        orderBy: [{ order_index: 'asc' }, { createdAt: 'desc' }],
+        include: {
+          createdBy: { select: { username: true, firstName: true, lastName: true } }
+        }
+      });
 
-      const total = await prisma.topic.countDocuments(filter);
+      const total = await prisma.topic.count({ where });
 
       res.json({
         success: true,
@@ -73,10 +71,12 @@ router.get(
 // @access  Public
 router.get('/:slug', async (req: express.Request, res: express.Response) => {
   try {
-    const topic = await prisma.topic.findOne({ slug: req.params.slug, isPublished: true })
-      .populate('createdBy', 'username firstName lastName');
+    const topic = await prisma.topic.findFirst({
+      where: { slug: req.params.slug, isPublished: true },
+      include: { createdBy: { select: { username: true, firstName: true, lastName: true } } }
+    });
 
-    if (!topic) return res.status(404).json({ success: false, error: 'prisma.topic not found' });
+    if (!topic) return res.status(404).json({ success: false, error: 'Topic not found' });
 
     res.json({ success: true, data: topic });
   } catch (error) {
@@ -114,12 +114,14 @@ router.post(
       if (existingTopic) return res.status(400).json({ success: false, error: 'Topic with this slug already exists' });
 
       const topic = await prisma.topic.create({
-        ...req.body,
-        createdBy: req.user!.id,
-        updatedBy: req.user!.id
+        data: {
+          ...req.body,
+          createdById: req.user!.id,
+          updatedById: req.user!.id
+        }
       });
 
-      res.status(201).json({ success: true, message: 'prisma.topic created successfully', data: topic });
+      res.status(201).json({ success: true, message: 'Topic created successfully', data: topic });
     } catch (error) {
       console.error('Create topic error:', error);
       res.status(500).json({ success: false, error: 'Server error while creating topic' });
@@ -145,8 +147,8 @@ router.put(
     if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
 
     try {
-      const topic = await prisma.topic.findById(req.params.id);
-      if (!topic) return res.status(404).json({ success: false, error: 'prisma.topic not found' });
+      const topic = await prisma.topic.findUnique({ where: { id: req.params.id } });
+      if (!topic) return res.status(404).json({ success: false, error: 'Topic not found' });
 
       if (req.body.slug && req.body.slug !== topic.slug) {
         const existingTopic = await prisma.topic.findFirst({ where: { slug: req.body.slug } });
@@ -155,7 +157,7 @@ router.put(
 
       const updatedTopic = await prisma.topic.update({
         where: { id: req.params.id },
-        data: { ...req.body, updatedBy: req.user!.id }
+        data: { ...req.body, updatedById: req.user!.id }
       });
 
       res.json({ success: true, message: 'Topic updated successfully', data: updatedTopic });
@@ -171,11 +173,11 @@ router.put(
 // @access  Private (Admin only)
 router.delete('/:id', [protect, authorize('admin')], async (req: AuthRequest, res: express.Response) => {
   try {
-    const topic = await prisma.topic.findById(req.params.id);
-    if (!topic) return res.status(404).json({ success: false, error: 'prisma.topic not found' });
+    const topic = await prisma.topic.findUnique({ where: { id: req.params.id } });
+    if (!topic) return res.status(404).json({ success: false, error: 'Topic not found' });
 
-    await prisma.topic.findByIdAndDelete(req.params.id);
-    res.json({ success: true, message: 'prisma.topic deleted successfully' });
+    await prisma.topic.delete({ where: { id: req.params.id } });
+    res.json({ success: true, message: 'Topic deleted successfully' });
   } catch (error) {
     console.error('Delete topic error:', error);
     res.status(500).json({ success: false, error: 'Server error while deleting topic' });
@@ -187,17 +189,18 @@ router.delete('/:id', [protect, authorize('admin')], async (req: AuthRequest, re
 // @access  Private (Admin/Instructor only)
 router.patch('/:id/publish', [protect, authorize('admin', 'instructor')], async (req: AuthRequest, res: express.Response) => {
   try {
-    const topic = await prisma.topic.findById(req.params.id);
-    if (!topic) return res.status(404).json({ success: false, error: 'prisma.topic not found' });
+    const topic = await prisma.topic.findUnique({ where: { id: req.params.id } });
+    if (!topic) return res.status(404).json({ success: false, error: 'Topic not found' });
 
-    topic.isPublished = !topic.isPublished;
-    topic.updatedBy = req.user!.id;
-    await topic.save();
+    const updated = await prisma.topic.update({
+      where: { id: req.params.id },
+      data: { isPublished: !topic.isPublished, updatedById: req.user!.id }
+    });
 
     res.json({
       success: true,
-      message: `prisma.topic ${topic.isPublished ? 'published' : 'unpublished'} successfully`,
-      data: { isPublished: topic.isPublished }
+      message: `Topic ${updated.isPublished ? 'published' : 'unpublished'} successfully`,
+      data: { isPublished: updated.isPublished }
     });
   } catch (error) {
     console.error('Toggle topic publication error:', error);

@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import { body, query, validationResult } from "express-validator";
 import prisma from '../config/database';
 import { protect, authorize } from '../middleware/auth';
@@ -14,71 +14,86 @@ router.use(protect, authorize('admin'));
 router.get('/dashboard', async (req: express.Request, res: express.Response) => {
   try {
     // Get counts
-    const userCount = await User.countDocuments();
-    const activeUserCount = await User.countDocuments({ isActive: true });
-    const topicCount = await Topic.countDocuments();
-    const publishedTopicCount = await Topic.countDocuments({ isPublished: true });
-    const assignmentCount = await Assignment.countDocuments();
-    const publishedAssignmentCount = await Assignment.countDocuments({ isPublished: true });
-    const quizCount = await Quiz.countDocuments();
-    const publishedQuizCount = await Quiz.countDocuments({ isPublished: true });
+    const [
+      userCount,
+      activeUserCount,
+      topicCount,
+      publishedTopicCount,
+      assignmentCount,
+      publishedAssignmentCount,
+      quizCount,
+      publishedQuizCount,
+    ] = await Promise.all([
+      prisma.user.count(),
+      prisma.user.count({ where: { isActive: true } }),
+      prisma.topic.count(),
+      prisma.topic.count({ where: { isPublished: true } }),
+      prisma.assignment.count(),
+      prisma.assignment.count({ where: { isPublished: true } }),
+      prisma.quiz.count(),
+      prisma.quiz.count({ where: { isPublished: true } }),
+    ]);
 
     // Get recent activity
-    const recentUsers = await User.find()
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .select('username email firstName lastName role createdAt');
-
-    const recentTopics = await Topic.find()
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .select('title slug category difficulty isPublished createdAt')
-      .populate('createdBy', 'username firstName lastName');
-
-    const recentAssignments = await Assignment.find()
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .select('title difficulty category isPublished createdAt')
-      .populate('createdBy', 'username firstName lastName');
+    const [recentUsers, recentTopics, recentAssignments] = await Promise.all([
+      prisma.user.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        select: { username: true, email: true, firstName: true, lastName: true, role: true, createdAt: true }
+      }),
+      prisma.topic.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        select: {
+          title: true,
+          slug: true,
+          category: true,
+          difficulty: true,
+          isPublished: true,
+          createdAt: true,
+          createdBy: { select: { username: true, firstName: true, lastName: true } }
+        }
+      }),
+      prisma.assignment.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        select: {
+          title: true,
+          category: true,
+          difficulty: true,
+          isPublished: true,
+          createdAt: true,
+          createdBy: { select: { username: true, firstName: true, lastName: true } }
+        }
+      })
+    ]);
 
     // Get user role distribution
-    const roleDistribution = await User.aggregate([
-      {
-        $group: {
-          _id: '$role',
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $sort: { count: -1 }
-      }
-    ]);
+    const roleGroup = await prisma.user.groupBy({
+      by: ['role'],
+      _count: { _all: true }
+    });
+    const roleDistribution = roleGroup
+      .map(r => ({ _id: r.role, count: r._count._all }))
+      .sort((a, b) => b.count - a.count);
 
     // Get topic category distribution
-    const topicCategoryDistribution = await Topic.aggregate([
-      {
-        $group: {
-          _id: '$category',
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $sort: { count: -1 }
-      }
-    ]);
+    const topicGroup = await prisma.topic.groupBy({
+      by: ['category'],
+      _count: { _all: true }
+    });
+    const topicCategoryDistribution = topicGroup
+      .map(t => ({ _id: t.category, count: t._count._all }))
+      .sort((a, b) => b.count - a.count);
 
     // Get assignment difficulty distribution
-    const assignmentDifficultyDistribution = await Assignment.aggregate([
-      {
-        $group: {
-          _id: '$difficulty',
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $sort: { count: -1 }
-      }
-    ]);
+    const assignmentGroup = await prisma.assignment.groupBy({
+      by: ['difficulty'],
+      _count: { _all: true }
+    });
+    const assignmentDifficultyDistribution = assignmentGroup
+      .map(a => ({ _id: a.difficulty, count: a._count._all }))
+      .sort((a, b) => b.count - a.count);
 
     res.status(200).json({
       success: true,
