@@ -78,8 +78,6 @@ router.post(
         }
       });
 
-      const token = generateToken(user.id.toString());
-
       // Send Welcome Email (non-blocking)
       try {
         await sendWelcomeEmail(user.email, user.firstName);
@@ -102,8 +100,7 @@ router.post(
 
       res.status(201).json({
         success: true,
-        message: "Registration received. Your account is pending admin approval.",
-        token,
+        message: "Registration received. Your account is pending admin approval. You will be able to log in once an admin activates your account.",
         user: {
           id: user.id,
           username: user.username,
