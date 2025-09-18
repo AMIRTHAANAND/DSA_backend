@@ -35,6 +35,15 @@ app.use(cors({
   origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
   credentials: true
 }));
+
+// Sanitize URLs to avoid trailing-space-related 404s like "/api/auth/register%20"
+app.use((req, _res, next) => {
+  if (typeof req.url === 'string') {
+    // Remove any encoded or raw trailing spaces
+    req.url = req.url.replace(/%20+$/g, '').replace(/\s+$/g, '');
+  }
+  next();
+});
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
