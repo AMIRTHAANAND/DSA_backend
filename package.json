@@ -9,6 +9,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "seed": "ts-node src/scripts/seedDatabase.ts",
+    "bootstrap:superadmin": "ts-node src/scripts/bootstrapSuperAdmin.ts",
     "test": "jest",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",

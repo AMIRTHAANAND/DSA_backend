@@ -3,7 +3,9 @@ import jwt from 'jsonwebtoken';
 import prisma from '../config/database';
 
 interface JwtPayload {
-  userId: string;
+  // Some tokens in the codebase are generated as { id }, others as { userId }
+  id?: string;
+  userId?: string;
 }
 
 export interface AuthRequest extends Request {
@@ -42,10 +44,21 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
-      
+
+      // Support both { id } and { userId } payloads
+      const decodedUserId = decoded.userId || decoded.id;
+
+      if (!decodedUserId) {
+        res.status(401).json({
+          success: false,
+          message: 'Invalid token payload.',
+        });
+        return;
+      }
+
       // Get user from database
       const user = await prisma.user.findUnique({
-        where: { id: decoded.userId },
+        where: { id: decodedUserId },
         select: {
           id: true,
           username: true,
@@ -178,9 +191,15 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
-      
+
+      const decodedUserId = decoded.userId || decoded.id;
+      if (!decodedUserId) {
+        next();
+        return;
+      }
+
       const user = await prisma.user.findUnique({
-        where: { id: decoded.userId },
+        where: { id: decodedUserId },
         select: {
           id: true,
           username: true,

@@ -8,6 +8,17 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Helper: return admin recipients as an array, supporting comma-separated envs
+const getAdminRecipients = (): string[] => {
+  const adminEnv = (process.env.ADMIN_EMAIL || '').trim();
+  const fallback = (process.env.EMAIL_USER || '').trim();
+  const list: string[] = [];
+  if (adminEnv) list.push(...adminEnv.split(',').map((e) => e.trim()).filter(Boolean));
+  if (fallback) list.push(...fallback.split(',').map((e) => e.trim()).filter(Boolean));
+  // De-duplicate
+  return Array.from(new Set(list));
+};
+
 export const sendLoginEmail = async (to: string) => {
   try {
     const mailOptions = {
@@ -38,9 +49,14 @@ export const sendLoginEmail = async (to: string) => {
 
 export const sendAdminNotification = async (admin: any) => {
   try {
+    const recipients = getAdminRecipients();
+    if (!recipients.length) {
+      console.warn('⚠️ No ADMIN_EMAIL/EMAIL_USER configured; skipping admin notification for admin registration');
+      return;
+    }
     const mailOptions = {
       from: `"DSA Learning Platform" <${process.env.EMAIL_USER}>`,
-      to: process.env.ADMIN_EMAIL || process.env.EMAIL_USER, // Super Admin email
+      to: recipients,
       subject: "🔔 New Admin Registration - Approval Required",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -209,5 +225,51 @@ export const sendWelcomeEmail = async (to: string, name: string) => {
     console.log("✅ Welcome email sent to:", to);
   } catch (error) {
     console.error("❌ Error sending welcome email:", error);
+  }
+};
+
+// Notify Super Admin when a regular user registers
+export const sendNewUserRegistrationNotification = async (user: {
+  id?: string;
+  username?: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+}) => {
+  try {
+    const recipients = getAdminRecipients();
+    if (!recipients.length) {
+      console.warn('⚠️ No ADMIN_EMAIL/EMAIL_USER configured; skipping admin notification for user registration');
+      return;
+    }
+
+    const displayName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username || user.email;
+    const mailOptions = {
+      from: `"DSA Learning Platform" <${process.env.EMAIL_USER}>`,
+      to: recipients,
+      subject: '👤 New User Registered - DSA Learning Platform',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2563eb;">👤 New User Registration</h2>
+          <p>Hello Super Admin,</p>
+          <p>A new user has just registered on the DSA Learning Platform.</p>
+
+          <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p><strong>Name:</strong> ${displayName}</p>
+            <p><strong>Username:</strong> ${user.username || '-'} </p>
+            <p><strong>Email:</strong> ${user.email}</p>
+            <p><strong>Registration Time:</strong> ${new Date().toLocaleString()}</p>
+          </div>
+
+          <p>This is an informational notification only. No approval is required for user accounts.</p>
+          <p>Best regards,<br>DSA Learning Platform System</p>
+        </div>
+      `,
+    } as any;
+
+    await transporter.sendMail(mailOptions);
+    console.log('✅ New user registration notification sent to Super Admin');
+  } catch (error) {
+    console.error('❌ Error sending new user registration notification:', error);
   }
 };

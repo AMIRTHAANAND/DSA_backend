@@ -4,7 +4,7 @@ import { body, validationResult } from "express-validator";
 import prisma from "../config/database";
 import { protect } from "../middleware/auth";
 import { sendLoginEmail, sendWelcomeEmail } from "../services/emailService"; // Updated imports
-import { sendAdminNotification } from "../services/emailService"; // new
+import { sendAdminNotification, sendNewUserRegistrationNotification } from "../services/emailService"; // new
 import bcrypt from 'bcryptjs';
 
 const router = Router();
@@ -74,17 +74,35 @@ router.post(
           firstName,
           lastName,
           role: normalizedRole as any,
+          isActive: false,
         }
       });
 
       const token = generateToken(user.id.toString());
 
-      // Send Welcome Email
-      await sendWelcomeEmail(user.email, user.firstName);
+      // Send Welcome Email (non-blocking)
+      try {
+        await sendWelcomeEmail(user.email, user.firstName);
+      } catch (e) {
+        console.error('Welcome email failed:', e);
+      }
+
+      // Notify Super Admin about new user registration (non-blocking)
+      try {
+        await sendNewUserRegistrationNotification({
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+        });
+      } catch (e) {
+        console.error('Admin new user notification failed:', e);
+      }
 
       res.status(201).json({
         success: true,
-        message: "User registered successfully",
+        message: "Registration received. Your account is pending admin approval.",
         token,
         user: {
           id: user.id,
@@ -93,6 +111,7 @@ router.post(
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.role,
+          isActive: user.isActive,
         },
       });
     } catch (error) {

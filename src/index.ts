@@ -17,6 +17,7 @@ import quizRoutes from './routes/quizzes';
 import progressRoutes from './routes/progress';
 import adminRoutes from './routes/admin';
 import adminAuthRoutes from './routes/adminAuth';
+import adminUsersRoutes from './routes/adminUsers';
 
 // Load environment variables
 dotenv.config();
@@ -55,6 +56,7 @@ app.use('/api/progress', progressRoutes);        // Progress tracking
 // Admin routes
 app.use('/api/admin/auth', adminAuthRoutes);     // Admin registration/login/approval
 app.use('/api/admin', adminRoutes);              // Admin dashboard, analytics, etc.
+app.use('/api/admin/users', adminUsersRoutes);   // Admin-managed user approvals
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

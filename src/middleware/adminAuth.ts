@@ -95,6 +95,27 @@ export const authenticateAdmin = async (req: Request, res: Response, next: NextF
   }
 };
 
+// Middleware to allow either ADMIN or SUPER_ADMIN
+export const requireAdminOrSuper = (req: Request, res: Response, next: NextFunction): void => {
+  if (!req.admin) {
+    res.status(401).json({
+      success: false,
+      message: 'Admin authentication required.',
+    });
+    return;
+  }
+
+  if (req.admin.role !== 'ADMIN' && req.admin.role !== 'SUPER_ADMIN') {
+    res.status(403).json({
+      success: false,
+      message: 'Access denied. Admin or Super Admin role required.',
+    });
+    return;
+  }
+
+  next();
+};
+
 // Middleware to check if admin is super admin
 export const requireSuperAdmin = (req: Request, res: Response, next: NextFunction): void => {
   if (!req.admin) {

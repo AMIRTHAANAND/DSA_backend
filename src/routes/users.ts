@@ -9,7 +9,7 @@ const router = express.Router();
 // @route   GET /api/users/profile
 // @desc    Get current user profile
 // @access  Private
-router.get('/', [protect, authorize('admin')], async (req: express.Request, res: express.Response) => {
+router.get('/', [protect, authorize('ADMIN')], async (req: express.Request, res: express.Response) => {
   try {
     const users = await prisma.user.findMany({
       select: {
@@ -127,7 +127,7 @@ router.put(
 // @route   GET /api/users
 // @desc    Get all users (Admin only)
 // @access  Private (Admin only)
-router.get('/', [protect, authorize('admin')], async (req: express.Request, res: express.Response) => {
+router.get('/', [protect, authorize('ADMIN')], async (req: express.Request, res: express.Response) => {
   try {
     const users = await prisma.user.findMany({
       select: {
@@ -152,7 +152,7 @@ router.get('/', [protect, authorize('admin')], async (req: express.Request, res:
 // @route   GET /api/users/:id
 // @desc    Get user by ID (Admin only)
 // @access  Private (Admin only)
-router.get('/:id', [protect, authorize('admin')], async (req: express.Request, res: express.Response) => {
+router.get('/:id', [protect, authorize('ADMIN')], async (req: express.Request, res: express.Response) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.params.id },
@@ -182,10 +182,10 @@ router.put(
   '/:id',
   [
     protect,
-    authorize('admin'),
+    authorize('ADMIN'),
     body('firstName').optional().notEmpty().withMessage('First name cannot be empty'),
     body('lastName').optional().notEmpty().withMessage('Last name cannot be empty'),
-    body('role').optional().isIn(['student', 'admin', 'instructor']).withMessage('Invalid role'),
+    body('role').optional().isIn(['STUDENT', 'ADMIN', 'INSTRUCTOR']).withMessage('Invalid role'),
     body('isActive').optional().isBoolean().withMessage('isActive must be a boolean')
   ],
   async (req: AuthRequest, res: express.Response) => {
@@ -223,7 +223,7 @@ router.put(
 // @route   DELETE /api/users/:id
 // @desc    Delete user by ID (Admin only)
 // @access  Private (Admin only)
-router.delete('/:id', [protect, authorize('admin')], async (req: AuthRequest, res: express.Response) => {
+router.delete('/:id', [protect, authorize('ADMIN')], async (req: AuthRequest, res: express.Response) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
@@ -243,7 +243,7 @@ router.delete('/:id', [protect, authorize('admin')], async (req: AuthRequest, re
 // @route   PATCH /api/users/:id/status
 // @desc    Toggle user active status (Admin only)
 // @access  Private (Admin only)
-router.patch('/:id/status', [protect, authorize('admin')], async (req: AuthRequest, res: express.Response) => {
+router.patch('/:id/status', [protect, authorize('ADMIN')], async (req: AuthRequest, res: express.Response) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.params.id } });
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
